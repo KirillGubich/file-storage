@@ -1,4 +1,4 @@
-package by.bsuir.file.storage.app;
+package by.bsuir.file.storage;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
