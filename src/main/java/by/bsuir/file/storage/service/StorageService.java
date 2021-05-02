@@ -20,4 +20,6 @@ public interface StorageService {
     FileInfo readFileInfo(Path filePath) throws IOException;
 
     boolean save(MultipartFile fileToSave, Path filePath);
+
+    boolean copy(Path sourcePath, Path destFile);
 }

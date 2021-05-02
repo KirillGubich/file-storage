@@ -1,6 +1,7 @@
 package by.bsuir.file.storage.controller;
 
 import by.bsuir.file.storage.model.FileInfo;
+import by.bsuir.file.storage.model.Headers;
 import by.bsuir.file.storage.model.StorageContent;
 import by.bsuir.file.storage.service.StorageService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,10 +31,10 @@ import java.util.List;
 public class StorageController {
 
     private final StorageService storageService;
-    private static final String NAME_HEADER = "Name";
-    private static final String SIZE_HEADER = "Size";
-    private static final String PATH_HEADER = "Path";
     private static final String BYTES_SIZE_LABEL = " Bytes";
+    private static final String CONTENT_DISPOSITION_HEADER_NAME = "Content-Disposition";
+    private static final String STORAGE_CONTENT_TYPE = "application/storage";
+    private static final String CONTENT_HEADER_VALUE = "attachment; filename=";
 
     @Autowired
     public StorageController(StorageService storageService) {
@@ -89,14 +90,31 @@ public class StorageController {
                                              @RequestParam("fileName") String fileName,
                                              HttpServletRequest request) {
         final File extractedFile = extractFile(request);
-        final Path path = Paths.get(extractedFile.getAbsolutePath(), fileName);
+        final Path destPath = Paths.get(extractedFile.getAbsolutePath(), fileName);
+        final String copyHeader = request.getHeader(Headers.COPY);
+        if (copyHeader != null) {
+            return copyFile(destPath, copyHeader);
+        }
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
-        boolean successfullySaved = storageService.save(file, path);
+        boolean successfullySaved = storageService.save(file, destPath);
         return successfullySaved ? ResponseEntity.ok().build() : ResponseEntity.status(500).build();
     }
 
+    private ResponseEntity<String> copyFile(Path destPath, String copyHeader) {
+        Path srcPath = Paths.get(storageService.getStoragePath(), copyHeader);
+        final boolean copiedSuccessfully = storageService.copy(srcPath, destPath);
+        return copiedSuccessfully ? ResponseEntity.ok().build() : ResponseEntity.status(500).build();
+    }
+
+    private void sendFile(HttpServletResponse response, Path path) throws IOException {
+        final String fileName = path.getFileName().toString();
+        response.setContentType(STORAGE_CONTENT_TYPE);
+        response.addHeader(CONTENT_DISPOSITION_HEADER_NAME, CONTENT_HEADER_VALUE + fileName);
+        Files.copy(path, response.getOutputStream());
+        response.getOutputStream().flush();
+    }
 
     private File extractFile(HttpServletRequest request) {
         String filePath = (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
@@ -106,17 +124,9 @@ public class StorageController {
 
     private HttpHeaders fillHeaders(FileInfo fileInfo) {
         HttpHeaders headers = new HttpHeaders();
-        headers.add(NAME_HEADER, fileInfo.getName());
-        headers.add(PATH_HEADER, fileInfo.getPath());
-        headers.add(SIZE_HEADER, fileInfo.getSize() + BYTES_SIZE_LABEL);
+        headers.add(Headers.NAME, fileInfo.getName());
+        headers.add(Headers.PATH, fileInfo.getPath());
+        headers.add(Headers.SIZE, fileInfo.getSize() + BYTES_SIZE_LABEL);
         return headers;
-    }
-
-    private void sendFile(HttpServletResponse response, Path path) throws IOException {
-        final String fileName = path.getFileName().toString();
-        response.setContentType("application/storage");
-        response.addHeader("Content-Disposition", "attachment; filename=" + fileName);
-        Files.copy(path, response.getOutputStream());
-        response.getOutputStream().flush();
     }
 }

@@ -21,6 +21,21 @@ public class FileStorageService implements StorageService {
     private static final String STORAGE_PATH = "src/main/resources";
 
     @Override
+    public boolean copy(Path sourcePath, Path destPath) {
+        if (sourcePath == null || destPath == null) {
+            return false;
+        }
+        final FileOutputStream outputStream;
+        try {
+            outputStream = new FileOutputStream(destPath.toFile());
+            Files.copy(sourcePath, outputStream);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    @Override
     public boolean save(MultipartFile fileToSave, Path filePath) {
         if (fileToSave == null) {
             return false;
