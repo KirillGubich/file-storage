@@ -1,4 +1,4 @@
-package by.bsuir.file.storage;
+package by.bsuir.file.storage.controller;
 
 import by.bsuir.file.storage.model.FileInfo;
 import by.bsuir.file.storage.model.StorageContent;
@@ -8,9 +8,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.HandlerMapping;
 
 import javax.servlet.http.HttpServletRequest;
@@ -26,7 +29,6 @@ import java.util.List;
 @RestController()
 public class StorageController {
 
-    private static final String STORAGE_PATH = "src/main/resources";
     private final StorageService storageService;
     private static final String NAME_HEADER = "Name";
     private static final String SIZE_HEADER = "Size";
@@ -82,9 +84,23 @@ public class StorageController {
         }
     }
 
+    @PutMapping("/storage/**")
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file,
+                                             @RequestParam("fileName") String fileName,
+                                             HttpServletRequest request) {
+        final File extractedFile = extractFile(request);
+        final Path path = Paths.get(extractedFile.getAbsolutePath(), fileName);
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        boolean successfullySaved = storageService.save(file, path);
+        return successfullySaved ? ResponseEntity.ok().build() : ResponseEntity.status(500).build();
+    }
+
+
     private File extractFile(HttpServletRequest request) {
         String filePath = (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
-        final Path path = Paths.get(STORAGE_PATH, filePath);
+        final Path path = Paths.get(storageService.getStoragePath(), filePath);
         return path.toFile();
     }
 

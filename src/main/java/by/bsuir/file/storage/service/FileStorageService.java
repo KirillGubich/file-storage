@@ -2,19 +2,44 @@ package by.bsuir.file.storage.service;
 
 import by.bsuir.file.storage.model.FileInfo;
 import by.bsuir.file.storage.model.StorageContent;
+import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 
 @Component
 public class FileStorageService implements StorageService {
+
+    private static final String STORAGE_PATH = "src/main/resources";
+
+    @Override
+    public boolean save(MultipartFile fileToSave, Path filePath) {
+        if (fileToSave == null) {
+            return false;
+        }
+        final File file = filePath.toFile();
+        try (BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(file))) {
+            byte[] bytes = fileToSave.getBytes();
+            stream.write(bytes);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    @Override
+    public String getStoragePath() {
+        return STORAGE_PATH;
+    }
+
     @Override
     public ArrayList<StorageContent> extractStorageContents(File file) {
         final File[] files = file.listFiles();
@@ -42,15 +67,18 @@ public class FileStorageService implements StorageService {
         if (file == null) {
             return false;
         }
-        return file.delete();
+        if (!file.isDirectory()) {
+            return file.delete();
+        }
+        try {
+            FileUtils.deleteDirectory(file);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     private String getComponentType(File file) {
         return file.isDirectory() ? "Folder" : "File";
-    }
-
-    private String convertToDate(FileTime fileTime) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
-        return dateFormat.format(fileTime.toMillis());
     }
 }
